@@ -39,10 +39,10 @@ def svm_loss_naive(W, X, y, reg):
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
-
+  dW /= num_train
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
-
+  dW += reg*W
   #############################################################################
   # TODO:                                                                     #
   # Compute the gradient of the loss function and store it dW.                #
@@ -70,7 +70,22 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  
+  scores = np.dot(X,W)
+  
+  c_cls_scr = np.choose(y, scores.T)
+  
+  mask = np.ones(scores.shape,dtype = bool)
+  mask[range(scores.shape[0]),y] = False
+  scr = scores[mask].reshape(scores.shape[0],scores.shape[1]-1)
+  
+  margin = scr - c_cls_scr[...,np.newaxis] + 1
+  margin[margin<0] = 0
+  
+  loss = np.sum(margin)/num_train
+  loss += reg * np.sum(W*W)
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -85,7 +100,17 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  og_margin = scores - c_cls_scr[...,np.newaxis]+1
+  
+  pos_margin_msk = (og_margin > 0).astype(float)
+  
+  sum_margin = pos_margin_msk.sum(1)-1
+  
+  pos_margin_msk[range(pos_margin_msk.shape[0]),y] = -sum_margin
+  
+  dW = np.dot(X.T, pos_margin_msk)
+  
+  dW = dW / num_train + 2 * reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
