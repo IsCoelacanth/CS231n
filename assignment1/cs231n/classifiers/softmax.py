@@ -30,7 +30,35 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_cls = W.shape[1]
+  
+  num_train = X.shape[0]
+  
+  scores = np.dot(X,W)
+  
+  for ii in range(num_train):
+      c_scr = scores[ii, :]
+      
+      sft_scores = c_scr - np.max(c_scr)
+      
+      loss_ii = -sft_scores[y[ii]] + np.log(np.sum(np.exp(sft_scores)))
+      loss += loss_ii
+      
+      for jj in range(num_cls):
+          
+          sftmx_score = np.exp(sft_scores[jj]) / np.sum(np.exp(sft_scores))
+          
+          if jj == y[ii]:
+              dW[:, jj] += (-1 + sftmx_score)*X[ii]
+          else:
+              dW[:, jj] += sftmx_score * X[ii]
+              
+  loss /= num_train
+  loss += reg * np.sum(W*W)
+  
+  dW /= num_train
+  dW += 2*reg*W
+  
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
@@ -54,7 +82,34 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  
+  #scores and stability fix
+  scores = np.dot(X,W)
+  shft_scores = scores - np.max(scores, axis = 1)[...,np.newaxis]
+  
+  #softmax scores
+  sftmx_scores = np.exp(shft_scores)/ np.sum(np.exp(shft_scores), axis=1)[..., np.newaxis]
+  
+  #gradient wrt softmax scores
+  dS = sftmx_scores 
+  dS[range(num_train),y] = dS[range(num_train),y] - 1
+  
+  #back prop dS and find dW
+  dW = np.dot(X.T, dS)
+  dW /= num_train
+  dW += 2*reg*W
+  
+  #cross entropy loss:
+  c_cls_scr = np.choose(y,shft_scores.T)
+  loss = -c_cls_scr + np.log(np.sum(np.exp(shft_scores),axis=1))
+  loss = np.sum(loss)
+  
+  loss /= num_train
+  
+  loss += reg * np.sum(W*W)
+  
+  
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
